@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Real-Time Graph</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 40px;
+    }
+    canvas {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <h2>Real-Time Data Graph</h2>
+  <canvas id="realtimeChart" width="800" height="400"></canvas>
+
+  <script>
+    const ctx = document.getElementById('realtimeChart').getContext('2d');
+    const data = {
+      labels: [],
+      datasets: [{
+        label: 'Live Value',
+        backgroundColor: 'rgba(0, 123, 255, 0.5)',
+        borderColor: 'rgba(0, 123, 255, 1)',
+        data: [],
+        fill: false,
+      }]
+    };
+
+    const config = {
+      type: 'line',
+      data: data,
+      options: {
+        responsive: true,
+        animation: false,
+        scales: {
+          x: {
+            type: 'realtime', // For Chart.js 4 with streaming plugin
+            realtime: {
+              duration: 20000,
+              refresh: 1000,
+              delay: 1000,
+              onRefresh: chart => {
+                chart.data.datasets[0].data.push({
+                  x: Date.now(),
+                  y: Math.floor(Math.random() * 100)
+                });
+              }
+            }
+          },
+          y: {
+            beginAtZero: true,
+            suggestedMax: 100
+          }
+        },
+        plugins: {
+          legend: {
+            display: true
+          }
+        }
+      }
+    };
+
+    // Load Chart.js streaming plugin
+    const loadStreamingPlugin = async () => {
+      await import('https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming@2.0.0');
+      new Chart(ctx, config);
+    };
+
+    loadStreamingPlugin();
+  </script>
+</body>
+</html>
