@@ -111,11 +111,12 @@ def main():
     while 1:
         sensor.add_measurement()
         while serial.in_waiting > 0:
-            byte = serial.read()
+            # print("will try to read", serial.in_waiting)
+            byte = serial.read(1)
             val = ord(byte)
-            print("got something", val)
+            # print("got ssomething", val)
             # print(val)
-            # serial.write("%s\r\n" % val)
+            serial.write("%s\r\n" % val)
         
         time.sleep(0.1)
 
