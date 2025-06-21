@@ -27,22 +27,24 @@ class Store(object):
         pass
 
 class DefaultHandler(tornado.web.RequestHandler):
-    def initialize(self, manager):
-        self.manager = manager
+    # def initialize(self):
+        # self.manager = manager
     def get(self):
-        self.render("index2.html")
+        self.render("index1.html")
 
 class LiveSocket(tornado.websocket.WebSocketHandler):
     clients = set()
-    def initialize(self, manager):
-        self.manager = manager
+    def initialize(self, serial):
+        self.serial = serial
 
     def open(self):
         LiveSocket.clients.add(self)
 
     def on_message(self, message):
-        # self.write_message(u"You said: " + message)
-        print("got", message)
+        print("from socket got", message)
+        # asyncio.run(self.serial.send(message))
+        # await self.serial.send(message)
+        self.serial.to_send.append(message)
 
     def on_close(self):
         LiveSocket.clients.remove(self)
@@ -55,12 +57,12 @@ class LiveSocket(tornado.websocket.WebSocketHandler):
 
 
 class Application(tornado.web.Application):
-    def __init__(self, manager):
+    def __init__(self, serial):
         handlers = [
-            (r"/ws", LiveSocket, dict(manager=manager)),
+            (r"/ws", LiveSocket, dict(serial=serial)),
             (r'/favicon.ico', tornado.web.StaticFileHandler),
             (r'/static/', tornado.web.StaticFileHandler),
-            (r"/.*", DefaultHandler, dict(manager=manager)),
+            (r"/.*", DefaultHandler),
 
         ]
         settings = dict(
@@ -74,11 +76,15 @@ class Application(tornado.web.Application):
 
 
 class Serial:
+    def __init__(self):
+        self.to_send = []
+
     async def setup(self):
         self.reader, self.writer = await open_serial_connection(url='/dev/ttyACM0')
     async def run(self):
         while True:
             line = await self.reader.readline()
+            # print(type(line), line)
             msg = str(line.strip(), 'utf-8')
             try:
                 number = float(msg)
@@ -88,23 +94,33 @@ class Serial:
                 print("bad value: %s" % msg)
             # print(msg)
     async def send(self, string):
+        print("sending", string)
         self.writer.write(string.encode("utf-8"))
+        self.writer.write("\r\n".encode("utf-8"))
         await self.writer.drain()
     async def periodic(self):
         # await self.send("oxxxx\r\n")
-        await asyncio.sleep(1)
+        while self.to_send:
+            val = self.to_send.pop(0)
+            print("to send:", val)
+            await self.send(val)
+
+        await asyncio.sleep(0.01)
         asyncio.create_task(self.periodic())
 
 async def main():
-    manager = Store("filename")
-    app = Application(manager)
-    app.listen(8080)
+    # manager = Store("filename")
+    print("running")
 
     ser = Serial()
+    
+    app = Application(ser)
+    app.listen(8080)
+
     await ser.setup()
     asyncio.create_task(ser.periodic())
     await ser.run()
-    
+
     shutdown_event = asyncio.Event()
     await shutdown_event.wait()
 

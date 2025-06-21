@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+<script src="/static/jquery.min.js"></script>
+<script src="/static/d3.min.js"></script>
+<script src="/static/epoch.min.js"></script>
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Industrial Control Panel</title>
   <style>
     body {
-      background-color: #2b2b2b;
+      /*background-color: #2b2b2b;*/
       font-family: 'Courier New', Courier, monospace;
       color: #eee;
       display: flex;
@@ -102,6 +106,68 @@
   </style>
 </head>
 <body>
+
+<div id="lineChart" style="width: 800px; height: 200px"></div>
+<script>
+var lineChartData = [{label: "one", values: [{time: 0, y: 10}, {time: 1, y: 20}]}];
+var chart = $('#lineChart').epoch({
+  type: 'time.line',
+  data: lineChartData,
+  // queueSize: 100,
+  // historySize: 10,
+  // ticks: {time: 5},
+  // pixelRatio: 20,
+  // tickFormats: { time: function(d) { return new Date(time*1000).toString(); } },
+  axes: ['left', 'bottom'],
+});
+
+const socket = new WebSocket('ws://192.168.1.101:8080/ws');
+
+// Event listener for when 
+//the WebSocket connection is opened
+socket.onopen = function (event) {
+    // Alert the user that they are 
+    // connected to the WebSocket server
+    console.log('You are Connected to WebSocket Server');
+};
+
+// Event listener for when a message
+//  is received from the server
+socket.onmessage = function (event) {
+    // Get the output div element
+    // const outputDiv = document.getElementById('output');
+    // Append a paragraph with the
+    //  received message to the output div
+    // outputDiv.innerHTML = `<p>Received <b>"${event.data}"</b> from server.</p>`;
+    var val = parseInt(event.data);
+    var now = new Date();
+    console.log(now);
+    val = val+Math.random();
+    chart.push([{time: now, y: 100*val}]);
+};
+
+// Event listener for when the 
+// WebSocket connection is closed
+socket.onclose = function (event) {
+    // Log a message when disconnected
+    //  from the WebSocket server
+    console.log('Disconnected from WebSocket server');
+};
+
+function sendMessage(message) {
+    socket.send(message);
+}
+
+$( document ).ready(function() {
+  $("#main_switch").click(function(evt) {
+    $(evt).attr("background-color", "green");
+    sendMessage("t");
+  });
+});
+
+
+</script>
+
   <h1>Control Panel</h1>
   <div class="panel">
     <div class="control">
@@ -117,7 +183,7 @@
     <div class="control">
       <div class="label">Main Switch</div>
       <label class="switch">
-        <input type="checkbox">
+        <input type="checkbox" id="main_switch">
       </label>
     </div>
 

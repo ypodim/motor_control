@@ -44,7 +44,8 @@ class Sensor:
     def add_measurement(self):
         MAX_MEASUREMENTS = 100
         ADC_THRESHOLD = 20000
-        MEASUREMENTS_PER_SEC = 2
+        ONE_SEC = 1000000000
+        MEASUREMENTS_PER_SEC = 2 * ONE_SEC
         now = time.monotonic_ns()
         
         delta = now - self.last_measurement
@@ -68,6 +69,7 @@ class Sensor:
             delta = now - self.last_tick
             if delta > 0:
                 speed = 1.0/delta
+                print("delta", delta, self.last_tick, now)
 
             self.last_tick = now
             # print("raw_val", raw_val, self.measurements)
@@ -78,17 +80,11 @@ class Sensor:
             del self.measurements[0]
         
         avg = sum(self.measurements) / len(self.measurements)
+        avg = float(avg)
         output = "{:.4f}\r\n".format(avg)
-        serial.write(output)
-
-        while serial.in_waiting > 0:
-            byte = serial.readline()
-            serial.write("%s\r\n" % byte)
-
-        # else:
-            # print("console is %s" % console)
-        # print("measurements", self.measurements)
-
+        output = "%f\r\n" % avg
+        # print(avg, output)
+        # serial.write(output)
 
 class State:
     def __init__(self):
@@ -101,9 +97,9 @@ class State:
 
 def main():
     adc = analogio.AnalogIn(board.A0)
-    state = State()
-    motor = Motor()
     sensor = Sensor(adc)
+    motor = Motor()
+    state = State()
 
     # Sweep up through 50 duty cycle values
     # for duty_cycle in range(0, 101, 2):
@@ -112,10 +108,16 @@ def main():
     #     print((throttle,))  # Plot/print current throttle value
     #     time.sleep(0.1)  # Hold at current throttle value
 
-    print("running")
     while 1:
         sensor.add_measurement()
-        # time.sleep(0.001)
+        while serial.in_waiting > 0:
+            byte = serial.read()
+            val = ord(byte)
+            print("got something", val)
+            # print(val)
+            # serial.write("%s\r\n" % val)
+        
+        time.sleep(0.1)
 
 if __name__=="__main__":
     main()
